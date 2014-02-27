@@ -6,93 +6,58 @@ module ActiveMerchant #:nodoc:
       module MollieIdeal
         class Notification < ActiveMerchant::Billing::Integrations::Notification
           def complete?
-            params['']
+            true
           end
 
           def item_id
-            params['']
+            params['item_id']
           end
 
           def transaction_id
             params['transaction_id']
           end
 
-          # When was this payment received by the client.
-          def received_at
-            #params['']
-          end
-
-          def payer_email
-            #params['']
-          end
-
-          def receiver_email
-            #params['']
-          end
-
-          def security_key
-            #params['']
-          end
-
           # the money amount we received in X.2 decimal.
           def gross
-            #params['']
+            BigDecimal.new(gross_cents) / 100
           end
 
-          # Was this a test transaction?
-          def test?
-            params['testmode'] == 'true'
+          def gross_cents
+            params['amount']
           end
 
           def status
-            params['']
+            params['status']
           end
 
-          # Acknowledge the transaction to MollieIdeal. This method has to be called after a new
-          # apc arrives. MollieIdeal will verify that all the information we received are correct and will return a
-          # ok or a fail.
-          #
-          # Example:
-          #
-          #   def ipn
-          #     notify = MollieIdealNotification.new(request.raw_post)
-          #
-          #     if notify.acknowledge
-          #       ... process order ... if notify.complete?
-          #     else
-          #       ... log possible hacking attempt ...
-          #     end
+          def currency
+            params['currency']
+          end
+
           def acknowledge(authcode = nil)
-            payload = raw
+            url = "#{MOLLIE_IDEAL_API_URL}?a=check&partnerid=#{CGI.escape(@options[:credential1])}&transaction_id=#{CGI.escape(transaction_id)}"
+            response = ssl_get(url)
 
-            uri = URI.parse(MollieIdeal.notification_confirmation_url)
+            xml = REXML::Document.new(response)
+            params['amount'] = REXML::XPath.first(xml, "//amount").text.to_i
+            params['status'] = REXML::XPath.first(xml, "//payed").text == 'true' ? 'Completed' : 'Failed'
+            params['currency'] = REXML::XPath.first(xml, "//currency").text
+            params['consumer_name'] = REXML::XPath.first(xml, "//consumerName").try(:text)
+            params['consumer_account'] = REXML::XPath.first(xml, "//consumerAccount").try(:text)
+            params['consumer_city'] = REXML::XPath.first(xml, "//consumerCity").try(:text)
+            params['message'] = REXML::XPath.first(xml, "//message").try(:text)
 
-            request = Net::HTTP::Post.new(uri.path)
-
-            request['Content-Length'] = "#{payload.size}"
-            request['User-Agent'] = "Active Merchant -- http://home.leetsoft.com/am"
-            request['Content-Type'] = "application/x-www-form-urlencoded"
-
-            http = Net::HTTP.new(uri.host, uri.port)
-            http.verify_mode    = OpenSSL::SSL::VERIFY_NONE unless @ssl_strict
-            http.use_ssl        = true
-
-            response = http.request(request, payload)
-
-            # Replace with the appropriate codes
-            raise StandardError.new("Faulty MollieIdeal result: #{response.body}") unless ["AUTHORISED", "DECLINED"].include?(response.body)
-            response.body == "AUTHORISED"
+            true
           end
 
           private
 
-          # Take the posted data and move the relevant data into a hash
-          def parse(post)
-            @raw = post.to_s
-            for line in @raw.split('&')
-              key, value = *line.scan( %r{^([A-Za-z0-9_.-]+)\=(.*)$} ).flatten
-              params[key] = CGI.unescape(value.to_s) if key.present?
-            end
+          def ssl_get(url)
+            uri = URI.parse(url)
+            site = Net::HTTP.new(uri.host, uri.port)
+            site.use_ssl = true
+            site.verify_mode    = OpenSSL::SSL::VERIFY_NONE
+            site.get(uri.to_s).body
           end
         end
       end
