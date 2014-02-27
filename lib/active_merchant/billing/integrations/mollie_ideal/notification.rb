@@ -27,7 +27,7 @@ module ActiveMerchant #:nodoc:
           end
 
           def status
-            params['status']
+            params['payed'] == 'true' ? 'Completed' : 'Failed'
           end
 
           def currency
@@ -39,15 +39,17 @@ module ActiveMerchant #:nodoc:
             response = ssl_get(url)
 
             xml = REXML::Document.new(response)
+            pp response
             params['amount'] = REXML::XPath.first(xml, "//amount").text.to_i
-            params['status'] = REXML::XPath.first(xml, "//payed").text == 'true' ? 'Completed' : 'Failed'
+            params['payed'] = REXML::XPath.first(xml, "//payed").text
             params['currency'] = REXML::XPath.first(xml, "//currency").text
             params['consumer_name'] = REXML::XPath.first(xml, "//consumerName").try(:text)
             params['consumer_account'] = REXML::XPath.first(xml, "//consumerAccount").try(:text)
             params['consumer_city'] = REXML::XPath.first(xml, "//consumerCity").try(:text)
             params['message'] = REXML::XPath.first(xml, "//message").try(:text)
+            params['status'] = REXML::XPath.first(xml, "//status").try(:text)
 
-            true
+            params['status_message'] != 'CheckedBefore'
           end
 
           private

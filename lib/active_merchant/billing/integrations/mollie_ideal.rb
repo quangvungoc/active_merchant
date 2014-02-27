@@ -9,8 +9,8 @@ module ActiveMerchant #:nodoc:
 
         MOLLIE_IDEAL_API_URL = 'https://secure.mollie.nl/xml/ideal'.freeze
 
-        def self.notification(post)
-          Notification.new(post)
+        def self.notification(post, options = {})
+          Notification.new(post, options)
         end
 
         def self.return(post, options = {})
