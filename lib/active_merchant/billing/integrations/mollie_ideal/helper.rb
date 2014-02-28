@@ -53,8 +53,11 @@ module ActiveMerchant #:nodoc:
               :reporturl   => @options[:notify_url] + "?item_id=#{@order}",
               :returnurl   => @options[:return_url]
             )
+
+            url = MollieIdeal.extract_response_parameter(xml, 'URL')
+            raise ActiveMerchant::Billing::Error, "Did not recweive a redirect URL from Mollie." if url.blank?
             
-            URI.parse(MollieIdeal.extract_response_parameter(xml, 'URL'))
+            URI.parse(url)
           end          
         end
       end
