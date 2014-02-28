@@ -6,7 +6,27 @@ module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     module Integrations #:nodoc:
       module MollieIdeal
+        
         MOLLIE_IDEAL_API_URL = 'https://secure.mollie.nl/xml/ideal'.freeze
+
+        mattr_accessor :production_banklist
+        self.production_banklist = [
+          ['ABN AMRO', '0031'],
+          ['ASN Bank', '0761'],
+          ['Friesland Bank', '0091'],
+          ['ING', '0721'],
+          ['Knab', '0801'],
+          ['Rabobank', '0021'],
+          ['RegioBank', '0771'],
+          ['SNS Bank', '0751'],
+          ['Triodos Bank', '0511'],
+          ['van Lanschot', '0161']
+        ]
+
+        mattr_accessor :testmode_banklist
+        self.testmode_banklist = [
+          ['TBM Bank', '9999']
+        ]
 
         def self.mollie_api_uri(action, get_params)
           get_params = get_params.merge('testmode' => 'true') if testmode
@@ -42,25 +62,20 @@ module ActiveMerchant #:nodoc:
           ActiveMerchant::Billing::Base.integration_mode != :production
         end
 
-        def self.redirect_param_options
-          if testmode
-            [
-              ['ABN AMRO', '0031'],
-              ['ASN Bank', '0761'],
-              ['Friesland Bank', '0091'],
-              ['ING', '0721'],
-              ['Knab', '0801'],
-              ['Rabobank', '0021'],
-              ['RegioBank', '0771'],
-              ['SNS Bank', '0751'],
-              ['Triodos Bank', '0511'],
-              ['van Lanschot', '0161']
-            ]
-          else
-            [
-              ['The Mollie Bank', '9999']
-            ]
+        def self.banklist(test = nil)
+          test = self.testmode if test.nil?
+          xml = mollie_api_request(:banklist, {})
+          bank_list = []
+          REXML::XPath.each(xml, "//bank") do |match|
+            name    = REXML::XPath.first(match, "./bank_name").text
+            bank_id = REXML::XPath.first(match, "./bank_id").text
+            bank_list << [name, bank_id]
           end
+          bank_list
+        end
+
+        def self.redirect_param_options
+          testmode ? self.testmode_banklist : self.production_banklist
         end
       end
     end

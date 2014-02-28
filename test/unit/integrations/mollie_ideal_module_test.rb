@@ -8,6 +8,7 @@ class MollieIdealModuleTest < Test::Unit::TestCase
   end
 
   def test_mollie_api_uri
+    MollieIdeal.stubs(:testmode).returns(false)
   	uri = MollieIdeal.mollie_api_uri(:banklist, {})
   	assert_equal 'https://secure.mollie.nl/xml/ideal?a=banklist', uri.to_s
 
@@ -17,5 +18,11 @@ class MollieIdealModuleTest < Test::Unit::TestCase
   	)
 
   	assert_equal 'partner_id=1487031&bank_id=9999&amount=123&description=order+%23123&reporturl=https%3A%2F%2Fpingback.com&returnurl=https%3A%2F%2Freturn.com&a=fetch', uri.query
+  end
+
+  def test_mollie_api_url_include_testmode
+    MollieIdeal.stubs(:testmode).returns(true)
+    uri = MollieIdeal.mollie_api_uri(:banklist, {})
+    assert_equal 'https://secure.mollie.nl/xml/ideal?testmode=true&a=banklist', uri.to_s
   end
 end
