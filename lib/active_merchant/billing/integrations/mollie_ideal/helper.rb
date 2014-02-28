@@ -45,7 +45,7 @@ module ActiveMerchant #:nodoc:
               :bank_id     => @options[:redirect_param],
               :amount      => @options[:amount].is_a?(Money) ? @options[:amount].cents : @options[:amount],
 
-              # Using the name of the sjop as description is not great - can we incldue an order description?
+              # Using the name of the account name as description is not great - can we incldue an order description?
               :description => @options[:account_name],
 
               # We append this to the return URL, because Mollie doens't return an
