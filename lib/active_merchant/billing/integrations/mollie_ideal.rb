@@ -16,6 +16,10 @@ module ActiveMerchant #:nodoc:
         def self.return(post, options = {})
           Return.new(post, options)
         end
+
+        def self.available_banks
+          {'The Mollie Bank' => '9999'}
+        end
       end
     end
   end

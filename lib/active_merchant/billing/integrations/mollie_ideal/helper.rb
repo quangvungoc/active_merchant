@@ -20,7 +20,7 @@ module ActiveMerchant #:nodoc:
             @options[:notify_url] = "http://requestb.in/1bw687v1"
 
             @options[:notify_url] << "?item_id=#{@item_id}"
-            url = "#{MOLLIE_IDEAL_API_URL}?a=fetch&partnerid=#{CGI.escape(@account)}&bank_id=9999&testmode=true&amount=#{@options[:amount].cents}&description=#{CGI.escape(@options[:account_name])}&reporturl=#{CGI.escape(@options[:notify_url])}&returnurl=#{CGI.escape(@options[:return_url])}"
+            url = "#{MOLLIE_IDEAL_API_URL}?a=fetch&partnerid=#{CGI.escape(@account)}&bank_id=#{@options[:bank_id]}&testmode=true&amount=#{@options[:amount].cents}&description=#{CGI.escape(@options[:account_name])}&reporturl=#{CGI.escape(@options[:notify_url])}&returnurl=#{CGI.escape(@options[:return_url])}"
             Rails.logger.info url
             response = ssl_get(url)
 
