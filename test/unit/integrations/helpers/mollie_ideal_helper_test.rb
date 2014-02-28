@@ -48,4 +48,12 @@ class MollieIdealHelperTest < Test::Unit::TestCase
     assert_raises(ArgumentError) { MollieIdeal::Helper.new('order-500','1234567', @required_options.merge(:notify_url => nil)) }
     assert_raises(ArgumentError) { MollieIdeal::Helper.new('order-500','1234567', @required_options.merge(:account_name => nil)) }
   end
+
+  def test_append_get_parameter
+    new_uri = @helper.append_get_parameter('http://example.com', :test, 123)
+    assert_equal "http://example.com?test=123", new_uri
+
+    new_uri = @helper.append_get_parameter('http://example.com?a=b', :test, '&')
+    assert_equal "http://example.com?a=b&test=%26", new_uri
+  end
 end

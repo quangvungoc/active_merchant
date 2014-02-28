@@ -50,15 +50,23 @@ module ActiveMerchant #:nodoc:
 
               # We append this to the return URL, because Mollie doens't return an
               # external identifier in its response that can be used to lookup the order.
-              :reporturl   => @options[:notify_url] + "?item_id=#{@order}",
+              :reporturl   => append_get_parameter(@options[:notify_url], :item_id, @order),
               :returnurl   => @options[:return_url]
             )
 
             url = MollieIdeal.extract_response_parameter(xml, 'URL')
-            raise ActiveMerchant::Billing::Error, "Did not recweive a redirect URL from Mollie." if url.blank?
+            raise ActiveMerchant::Billing::Error, "Did not receive a redirect URL from Mollie." if url.blank?
             
             URI.parse(url)
-          end          
+          end
+
+          def append_get_parameter(uri, key, value)
+            if uri.include?('?')
+              uri + "&#{CGI.escape(key.to_s)}=#{CGI.escape(value.to_s)}"
+            else
+              uri + "?#{CGI.escape(key.to_s)}=#{CGI.escape(value.to_s)}"
+            end
+          end
         end
       end
     end
