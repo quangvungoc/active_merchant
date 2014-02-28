@@ -5,6 +5,14 @@ module ActiveMerchant #:nodoc:
     module Integrations #:nodoc:
       module MollieIdeal
         class Notification < ActiveMerchant::Billing::Integrations::Notification
+
+          def initialize(query_string, options = {})
+            super
+
+            raise ArgumentError, "The transaction_id needs to be include din the query string." if transaction_id.nil?
+            raise ArgumentError, "The partner_id or credential1 option needs to be set." if partner_id.blank?
+          end
+
           def complete?
             true
           end
@@ -27,39 +35,32 @@ module ActiveMerchant #:nodoc:
           end
 
           def status
-            params['payed'] == 'true' ? 'Completed' : 'Failed'
+            return 'Pending' if params['paid'].nil?
+            params['paid'] == 'true' ? 'Completed' : 'Failed'
           end
 
           def currency
             params['currency']
           end
 
-          def acknowledge(authcode = nil)
-            url = "#{MOLLIE_IDEAL_API_URL}?a=check&partnerid=#{CGI.escape(@options[:credential1])}&transaction_id=#{CGI.escape(transaction_id)}"
-            response = ssl_get(url)
-
-            xml = REXML::Document.new(response)
-            pp response
-            params['amount'] = REXML::XPath.first(xml, "//amount").text.to_i
-            params['payed'] = REXML::XPath.first(xml, "//payed").text
-            params['currency'] = REXML::XPath.first(xml, "//currency").text
-            params['consumer_name'] = REXML::XPath.first(xml, "//consumerName").try(:text)
-            params['consumer_account'] = REXML::XPath.first(xml, "//consumerAccount").try(:text)
-            params['consumer_city'] = REXML::XPath.first(xml, "//consumerCity").try(:text)
-            params['message'] = REXML::XPath.first(xml, "//message").try(:text)
-            params['status'] = REXML::XPath.first(xml, "//status").try(:text)
-
-            params['status_message'] != 'CheckedBefore'
+          def partner_id
+            @options[:partner_id] || @options[:credential1]
           end
 
-          private
+          def acknowledge(authcode = nil)
+            xml = MollieIdeal.mollie_api_request(:check, :partner_id => partner_id, :transaction_id => transaction_id)
 
-          def ssl_get(url)
-            uri = URI.parse(url)
-            site = Net::HTTP.new(uri.host, uri.port)
-            site.use_ssl = true
-            site.verify_mode    = OpenSSL::SSL::VERIFY_NONE
-            site.get(uri.to_s).body
+            params['amount']           = MollieIdeal.extract_response_parameter(xml, 'amount').to_i
+            params['paid']             = MollieIdeal.extract_response_parameter(xml, 'payed')
+            params['currency']         = MollieIdeal.extract_response_parameter(xml, 'currency')
+            params['consumer_name']    = MollieIdeal.extract_response_parameter(xml, 'consumerName')
+            params['consumer_account'] = MollieIdeal.extract_response_parameter(xml, 'consumerAccount')
+            params['consumer_city']    = MollieIdeal.extract_response_parameter(xml, 'consumerCity')
+            params['message']          = MollieIdeal.extract_response_parameter(xml, 'city')
+            params['status']           = MollieIdeal.extract_response_parameter(xml, 'status')
+            params['message']          = MollieIdeal.extract_response_parameter(xml, 'message')
+
+            params['status'] != 'CheckedBefore'
           end
         end
       end

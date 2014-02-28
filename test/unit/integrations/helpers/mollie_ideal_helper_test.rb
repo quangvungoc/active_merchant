@@ -3,52 +3,49 @@ require 'test_helper'
 class MollieIdealHelperTest < Test::Unit::TestCase
   include ActiveMerchant::Billing::Integrations
   
+  FETCH_XML_RESPONSE = <<-XML
+      <?xml version="1.0"?>
+      <response>
+          <order>
+              <transaction_id>482d599bbcc7795727650330ad65fe9b</transaction_id>
+              <amount>123</amount>
+              <currency>EUR</currency>
+              <URL>https://mijn.postbank.nl/internetbankieren/SesamLoginServlet?sessie=ideal&amp;trxid=003123456789123&amp;random=123456789abcdefgh</URL>
+              <message>Your iDEAL-payment has succesfuly been setup. Your customer should visit the given URL to make the payment</message>
+          </order>
+      </response>
+  XML
+
   def setup
-    @helper = MollieIdeal::Helper.new('order-500','cody@example.com', :amount => 500, :currency => 'USD')
+    @required_options = {
+      :account_name => "My shop", 
+      :amount => 500, 
+      :currency => 'EUR', 
+      :redirect_param => 9999,
+      :return_url => 'https://return.com', 
+      :notify_url => 'https://notify.com'      
+    }
+
+    @helper = MollieIdeal::Helper.new('order-500','1234567', @required_options)
   end
  
-  def test_basic_helper_fields
-    assert_field '', 'cody@example.com'
-
-    assert_field '', '5.00'
-    assert_field '', 'order-500'
-  end
-  
-  def test_customer_fields
-    @helper.customer :first_name => 'Cody', :last_name => 'Fauser', :email => 'cody@example.com'
-    assert_field '', 'Cody'
-    assert_field '', 'Fauser'
-    assert_field '', 'cody@example.com'
+  def test_request_redirect_uri
+    MollieIdeal.expects(:mollie_api_request).returns(REXML::Document.new(FETCH_XML_RESPONSE))
+    uri = @helper.request_redirect_uri
+    assert_equal "https://mijn.postbank.nl/internetbankieren/SesamLoginServlet?sessie=ideal&trxid=003123456789123&random=123456789abcdefgh", uri.to_s
   end
 
-  def test_address_mapping
-    @helper.billing_address :address1 => '1 My Street',
-                            :address2 => '',
-                            :city => 'Leeds',
-                            :state => 'Yorkshire',
-                            :zip => 'LS2 7EE',
-                            :country  => 'CA'
-   
-    assert_field '', '1 My Street'
-    assert_field '', 'Leeds'
-    assert_field '', 'Yorkshire'
-    assert_field '', 'LS2 7EE'
-  end
-  
-  def test_unknown_address_mapping
-    @helper.billing_address :farm => 'CA'
-    assert_equal 3, @helper.fields.size
+  def test_credential_based_url
+    MollieIdeal.expects(:mollie_api_request).returns(REXML::Document.new(FETCH_XML_RESPONSE))
+    uri = @helper.credential_based_url
+    assert_equal 'https://mijn.postbank.nl/internetbankieren/SesamLoginServlet', uri 
+    assert_equal({"sessie" => "ideal", "trxid" => "003123456789123", "random" => "123456789abcdefgh"}, @helper.fields)
   end
 
-  def test_unknown_mapping
-    assert_nothing_raised do
-      @helper.company_address :address => '500 Dwemthy Fox Road'
-    end
-  end
-  
-  def test_setting_invalid_address_field
-    fields = @helper.fields.dup
-    @helper.billing_address :street => 'My Street'
-    assert_equal fields, @helper.fields
+  def test_raises_without_required_options
+    assert_raises(ArgumentError) { MollieIdeal::Helper.new('order-500','1234567', @required_options.merge(:redirect_param => nil)) }
+    assert_raises(ArgumentError) { MollieIdeal::Helper.new('order-500','1234567', @required_options.merge(:return_url => nil)) }
+    assert_raises(ArgumentError) { MollieIdeal::Helper.new('order-500','1234567', @required_options.merge(:notify_url => nil)) }
+    assert_raises(ArgumentError) { MollieIdeal::Helper.new('order-500','1234567', @required_options.merge(:account_name => nil)) }
   end
 end

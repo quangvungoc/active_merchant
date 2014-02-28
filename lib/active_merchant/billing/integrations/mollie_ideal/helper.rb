@@ -4,46 +4,58 @@ module ActiveMerchant #:nodoc:
       module MollieIdeal
         class Helper < ActiveMerchant::Billing::Integrations::Helper
 
-          # https://secure.mollie.nl/xml/ideal?a=fetch&partnerid=1487031&bank_id=9999&testmode=true&amount=123&description=test&reporturl=http%3A%2F%2Fwww.example.org%2Freport.php&returnurl=http%3A%2F%2Fwww.example.org%2Freturn.php
-
           def initialize(order, account, options = {})
-            @account = account
+            @account         = account
             @fields          = {}
             @raw_html_fields = []
-            @test            = options[:test]
             @options         = options
             @mappings        = {}
-            @item_id         = order
+            @order           = order
+        
+            raise ArgumentError, "The redirect_param option needs to be set to the bank_id the customer selected." if @options[:redirect_param].blank?
+            raise ArgumentError, "The notify_url option needs to be set." if @options[:notify_url].blank?
+            raise ArgumentError, "The return_url option needs to be set." if @options[:return_url].blank?
+            raise ArgumentError, "The account_name option needs to be set." if @options[:account_name].blank?
           end
 
           def credential_based_url
-            @options[:notify_url] = "http://requestb.in/1bw687v1"
-
-            @options[:notify_url] << "?item_id=#{@item_id}"
-            url = "#{MOLLIE_IDEAL_API_URL}?a=fetch&partnerid=#{CGI.escape(@account)}&bank_id=#{@options[:bank_id]}&testmode=true&amount=#{@options[:amount].cents}&description=#{CGI.escape(@options[:account_name])}&reporturl=#{CGI.escape(@options[:notify_url])}&returnurl=#{CGI.escape(@options[:return_url])}"
-            Rails.logger.info url
-            response = ssl_get(url)
-
-            xml = REXML::Document.new(response)
-            uri = REXML::XPath.first(xml, "//URL").text
-
-            url = URI.parse(uri)
-            @fields = CGI.parse(url.query)
-            url.query = ''
-            url.to_s
+            uri = request_redirect_uri
+            set_form_fields_from_uri(uri)
+            uri.query = ''
+            uri.to_s.sub(/\?\z/, '')
           end
 
           def form_method
             "GET"
           end
 
-          def ssl_get(url)
-            uri = URI.parse(url)
-            site = Net::HTTP.new(uri.host, uri.port)
-            site.use_ssl = true
-            site.verify_mode    = OpenSSL::SSL::VERIFY_NONE
-            site.get(uri.to_s).body
+          def set_form_fields_from_uri(uri)
+            CGI.parse(uri.query).each do |key, value|
+              if value.is_a?(Array) && value.length == 1
+                @fields[key] = value.first
+              else
+                @fields[key] = value
+              end
+            end
           end
+
+          def request_redirect_uri
+            xml = MollieIdeal.mollie_api_request(:fetch,
+              :partnerid   => @account,
+              :bank_id     => @options[:redirect_param],
+              :amount      => @options[:amount].is_a?(Money) ? @options[:amount].cents : @options[:amount],
+
+              # Using the name of the sjop as description is not great - can we incldue an order description?
+              :description => @options[:account_name],
+
+              # We append this to the return URL, because Mollie doens't return an
+              # external identifier in its response that can be used to lookup the order.
+              :reporturl   => @options[:notify_url] + "?item_id=#{@order}",
+              :returnurl   => @options[:return_url]
+            )
+            
+            URI.parse(MollieIdeal.extract_response_parameter(xml, 'URL'))
+          end          
         end
       end
     end
