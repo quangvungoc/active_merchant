@@ -9,7 +9,7 @@ module ActiveMerchant #:nodoc:
           def initialize(query_string, options = {})
             super
 
-            raise ArgumentError, "The transaction_id needs to be include din the query string." if transaction_id.nil?
+            raise ArgumentError, "The transaction_id needs to be included in the query string." if transaction_id.nil?
             raise ArgumentError, "The partner_id or credential1 option needs to be set." if partner_id.blank?
           end
 

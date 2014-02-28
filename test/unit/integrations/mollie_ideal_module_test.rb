@@ -4,7 +4,7 @@ class MollieIdealModuleTest < Test::Unit::TestCase
   include ActiveMerchant::Billing::Integrations
 
   def test_notification_method
-    assert_instance_of MollieIdeal::Notification, MollieIdeal.notification('name=cody')
+    assert_instance_of MollieIdeal::Notification, MollieIdeal.notification("transaction_id=482d599bbcc7795727650330ad65fe9b", :partner_id => '1234')
   end
 
   def test_mollie_api_uri
