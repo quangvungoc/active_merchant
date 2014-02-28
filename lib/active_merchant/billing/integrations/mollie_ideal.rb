@@ -6,24 +6,6 @@ module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     module Integrations #:nodoc:
       module MollieIdeal
-
-        mattr_accessor :testmode
-        self.testmode = false
-
-        mattr_accessor :redirect_param_options
-        self.redirect_param_options = [
-          ['ABN AMRO', '0031'],
-          ['ASN Bank', '0761'],
-          ['Friesland Bank', '0091'],
-          ['ING', '0721'],
-          ['Knab', '0801'],
-          ['Rabobank', '0021'],
-          ['RegioBank', '0771'],
-          ['SNS Bank', '0751'],
-          ['Triodos Bank', '0511'],
-          ['van Lanschot', '0161']
-        ]
-
         MOLLIE_IDEAL_API_URL = 'https://secure.mollie.nl/xml/ideal'.freeze
 
         def self.mollie_api_uri(action, get_params)
@@ -54,6 +36,31 @@ module ActiveMerchant #:nodoc:
 
         def self.return(post, options = {})
           Return.new(post, options)
+        end
+
+        def self.testmode
+          ActiveMerchant::Billing::Base.integration_mode != :production
+        end
+
+        def self.redirect_param_options
+          if testmode
+            [
+              ['ABN AMRO', '0031'],
+              ['ASN Bank', '0761'],
+              ['Friesland Bank', '0091'],
+              ['ING', '0721'],
+              ['Knab', '0801'],
+              ['Rabobank', '0021'],
+              ['RegioBank', '0771'],
+              ['SNS Bank', '0751'],
+              ['Triodos Bank', '0511'],
+              ['van Lanschot', '0161']
+            ]
+          else
+            [
+              ['The Mollie Bank', '9999']
+            ]
+          end
         end
       end
     end
