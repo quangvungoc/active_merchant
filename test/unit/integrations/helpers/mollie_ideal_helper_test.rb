@@ -17,13 +17,13 @@ class MollieIdealHelperTest < Test::Unit::TestCase
   end
  
   def test_request_redirect_uri
-    MollieIdeal.expects(:mollie_api_request).returns(CREATE_PAYMENT_RESPONSE_JSON)
+    MollieIdeal.expects(:post_request).returns(CREATE_PAYMENT_RESPONSE_JSON)
     uri = @helper.request_redirect_uri
     assert_equal "https://www.mollie.nl/paymentscreen/ideal/testmode?transaction_id=20a5a25c2bce925b4fabefd0410927ca&bank_trxid=0148703115482464", uri.to_s
   end
 
   def test_credential_based_url
-    MollieIdeal.expects(:mollie_api_request).returns(CREATE_PAYMENT_RESPONSE_JSON)
+    MollieIdeal.expects(:post_request).returns(CREATE_PAYMENT_RESPONSE_JSON)
     uri = @helper.credential_based_url
     
     assert_equal "https://www.mollie.nl/paymentscreen/ideal/testmode", uri
