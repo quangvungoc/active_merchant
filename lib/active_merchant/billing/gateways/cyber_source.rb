@@ -114,9 +114,27 @@ module ActiveMerchant #:nodoc:
         super
       end
 
+      def authValidate(money, creditcard_or_reference, options = {})
+        requires!(options, :order_id)
+        requires!(options, :md)
+        requires!(options, :pares)
+        setup_address_hash(options)
+        commit(build_auth_validate_request(money, creditcard_or_reference, options), options)
+      end
+
+      # Request 3d secure enrollment check.
+      # if not enroll, automatically authorize
+      def authEnroll(money, creditcard_or_reference, options = {})
+        requires!(options,  :order_id)
+        setup_address_hash(options)
+        commit(build_auth_enroll_request(money, creditcard_or_reference, options), options )
+      end
+
       # Request an authorization for an amount from CyberSource
       #
       # You must supply an :order_id in the options hash
+      #
+      # TODO config to choose when to check enrollment
       def authorize(money, creditcard_or_reference, options = {})
         requires!(options,  :order_id)
         setup_address_hash(options)
@@ -231,10 +249,26 @@ module ActiveMerchant #:nodoc:
         options[:shipping_address] = options[:shipping_address] || {}
       end
 
+      def build_auth_validate_request(money, creditcard_or_reference, options)
+        xml = Builder::XmlMarkup.new :indent => 2
+        add_payment_method_or_subscription(xml, money, creditcard_or_reference, options)
+        add_auth_validate_data(xml, options)
+        add_business_rules_data(xml)
+        xml.target!
+      end
+
       def build_auth_request(money, creditcard_or_reference, options)
         xml = Builder::XmlMarkup.new :indent => 2
         add_payment_method_or_subscription(xml, money, creditcard_or_reference, options)
-        add_auth_service(xml)
+        add_auth_enroll_service(xml)
+        add_business_rules_data(xml)
+        xml.target!
+      end
+
+      def build_auth_enroll_request(money, creditcard_or_reference, options)
+        xml = Builder::XmlMarkup.new :indent => 2
+        add_payment_method_or_subscription(xml, money, creditcard_or_reference, options)
+        add_auth_enroll_service(xml)
         add_business_rules_data(xml)
         xml.target!
       end
@@ -374,6 +408,13 @@ module ActiveMerchant #:nodoc:
         xml.target!
       end
 
+      def add_auth_validate_data(xml, options)
+        xml.tag! 'ccAuthService', {'run' => 'true'}
+        xml.tag! 'payerAuthValidateService', {'run' => 'true'} do
+          xml.tag! 'signedPARes', options[:pares]
+        end
+      end
+
       def add_business_rules_data(xml)
         xml.tag! 'businessRules' do
           xml.tag!('ignoreAVSResult', 'true') if @options[:ignore_avs]
@@ -454,6 +495,11 @@ module ActiveMerchant #:nodoc:
 
       def add_auth_service(xml)
         xml.tag! 'ccAuthService', {'run' => 'true'}
+      end
+
+      def add_auth_enroll_service(xml)
+        xml.tag! 'ccAuthService', {'run' => 'true'}
+        xml.tag! 'payerAuthEnrollService', {'run' => 'true'}
       end
 
       def add_capture_service(xml, request_id, request_token)
