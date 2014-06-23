@@ -260,7 +260,7 @@ module ActiveMerchant #:nodoc:
       def build_auth_request(money, creditcard_or_reference, options)
         xml = Builder::XmlMarkup.new :indent => 2
         add_payment_method_or_subscription(xml, money, creditcard_or_reference, options)
-        add_auth_enroll_service(xml)
+        add_auth_service(xml)
         add_business_rules_data(xml)
         xml.target!
       end
